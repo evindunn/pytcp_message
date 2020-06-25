@@ -1,47 +1,64 @@
 import io
-from zlib import compress, decompress
 from socket import timeout
-from typing import Union, Type, TypeVar
-
-StreamType = TypeVar("StreamType", bound=io.FileIO)
+from typing import Optional
+from zlib import compress, decompress
 
 
 class TcpMessage:
     """
     Class representing an encoded byte array with the following format:
-    | 1 byte         | 8 bytes        |  ... |
-    | is compressed? | content length | data |
+    ::
+        | 1 byte         | 8 bytes        |    ...  |
+        | is compressed? | content length | content |
     """
+
+    #: Byte order that TcpMessage will use for integer encode/decode
     _BYTE_ORDER = "little"
+
+    #: Minimum content size (in bytes) for which zlib compression is used
     _BYTES_MIN_COMPRESSION = 575
+
+    #: Number of bytes used over the wire to indicate whether the message is
+    #: compressed
     _HEADER_BYTES_COMPRESSION = 1
+
+    #: Number of bytes used over the wire to indicate the message size (64-bit int)
     _HEADER_BYTES_SIZE = 8
 
     def __init__(self, content: bytes = None):
         """
-        :param content: bytes The TcpMessage content
+        :param content: The TcpMessage content
+        :type content: bytes
         """
         self._content = content
 
     def __bytes__(self):
+        """
+        :return: The message content
+        :rtype: bytes
+        """
         return self._content
 
     def get_content(self) -> bytes:
         """
-        :return: bytes The TcpMessage content
+        :return: The TcpMessage content
+        :rtype: bytes
         """
         return bytes(self)
 
     def set_content(self, content: bytes):
         """
-        :param content: bytes The TcpMessage content
+        :param content: The TcpMessage content
+        :type content: bytes
         """
         self._content = content
 
-    def to_stream(self, stream: StreamType):
+    def to_stream(self, stream):
         """
         Writes the TcpMessage to the given stream
-        :param stream: io.BufferedIOBase The stream to write to
+
+        :param stream: The stream to write to
+        :type stream: io.FileIO
         """
         content = self._content[:]
         content_len = len(content)
@@ -66,13 +83,15 @@ class TcpMessage:
         stream.flush()
 
     @staticmethod
-    def from_stream(stream: StreamType) -> Union["TcpMessage", None]:
+    def from_stream(stream) -> Optional["TcpMessage"]:
         """
         Reads a new TcpMessage from the given stream. If reading from the
         stream times out, returns None
+
         :param stream: The stream to read from
-        :return: TcpMessage The message read from the stream, or None if
-        unable to read
+        :type stream: io.FileIO
+        :return: The message read from the stream, or None if unable to read
+        :rtype: TcpMessage
         """
         try:
             is_compressed = stream.read(TcpMessage._HEADER_BYTES_COMPRESSION)

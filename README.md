@@ -1,8 +1,11 @@
 # pytcp_message
 [View on PyPI](https://pypi.org/project/pytcp-message/)
 
+[Read the docs](https://pytcp-message.readthedocs.io/en/stable/)
+
 [<img src="https://github.com/evindunn/pytcp_message/workflows/Test/Publish/badge.svg">](https://github.com/evindunn/pytcp_message/actions?query=workflow%3ATest%2FPublish)
 [![Coverage Status](https://coveralls.io/repos/github/evindunn/pytcp_message/badge.svg?branch=master)](https://coveralls.io/github/evindunn/pytcp_message?branch=master)
+[![Documentation Status](https://readthedocs.org/projects/pytcp-message/badge/?version=latest)](https://pytcp-message.readthedocs.io/en/latest/?badge=latest)
 
 Sends/receives messages in the following format:
 ```text

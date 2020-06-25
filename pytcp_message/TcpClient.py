@@ -10,12 +10,14 @@ class TcpClient:
     in response
     """
 
+    #: Number of times to try receiving a TcpMessage from the server before
+    #: giving up and throwing a ConnectionError
     RETRIES = 3
 
     def __init__(self, server_addr: Tuple[str, int]):
         """
-        :param server_addr: Tuple[str, int] The address of the server to
-        communicate with
+        :param server_addr: The address of the server to communicate with
+        :type server_addr: Tuple[str, int]
         """
         self._server_addr = server_addr
         self._socket = None
@@ -59,7 +61,9 @@ class TcpClient:
     def send(self, data: Union[bytes, str]):
         """
         Sents a TcpMessage to server_addr with data as the message content
+
         :param data: The TcpMessage content
+        :type data: Union[bytes, str]
         """
         if isinstance(data, str):
             data = data.encode("utf-8")
@@ -72,7 +76,9 @@ class TcpClient:
         Waits for a response from server_addr. Should only be used after send()
         has been called. If no response is sent from the server, the
         connection is retried up to TcpClient.RETRIES times
+
         :return: The TcpMessage content from the server's response
+        :rtype: bytes
         """
         response = TcpMessage.from_stream(self._rfile)
 
