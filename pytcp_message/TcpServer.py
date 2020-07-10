@@ -18,9 +18,13 @@ class TcpServer(ThreadingTCPServer):
     #: See :py:attr:`socketserver.BaseServer.allow_reuse_address`.
     allow_reuse_address = True
 
-    _LISTENER_TYPE = Callable[[TcpRequest, TcpMessage], None]
+    #: Number of seconds to wait for a client to send data before closing
+    #: the connection
+    _TIMEOUT = 3
 
-    def __init__(self, port, address="0.0.0.0", timeout=30):
+    _LISTENER_TYPE = Callable[[TcpRequest, TcpMessage], bool]
+
+    def __init__(self, port, address="0.0.0.0", timeout=_TIMEOUT):
         """
         :param port: The port to listen on
         :param address: The ip address to listen on
@@ -88,19 +92,20 @@ class TcpServer(ThreadingTCPServer):
 
         :param listener: A request handler function that manipulates an incoming
             request/response pair
-        :type listener: Callable[[TcpRequest, TcpMessage], None]
+        :type listener: Callable[[TcpRequest, TcpMessage], bool]
 
         .. code-block:: python3
 
             def no_op(tcp_req_obj, tcp_msg_obj):
                 assert isinstance(tcp_req_obj, TcpRequest)
                 assert isinstance(tcp_msg_obj, TcpMessage)
+                return True
         """
         self._request_handlers.append(listener)
 
     def get_request_handlers(self) -> List[_LISTENER_TYPE]:
         """
         :return: The list of request handlers for this server
-        :rtype: List[Callable[[TcpRequest, TcpResponse], None]]
+        :rtype: List[Callable[[TcpRequest, TcpResponse], bool]]
         """
         return self._request_handlers

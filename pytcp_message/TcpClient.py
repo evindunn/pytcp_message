@@ -1,5 +1,7 @@
+import os
 from typing import Tuple, Union
 from socket import socket, AF_INET, SOCK_STREAM, SHUT_RDWR
+from errno import ENOTCONN
 
 from .message.TcpMessage import TcpMessage
 
@@ -11,19 +13,25 @@ class TcpClient:
     """
 
     #: Number of times to try receiving a TcpMessage from the server before
-    #: giving up and throwing a ConnectionError
+    #: giving up
     RETRIES = 3
 
-    def __init__(self, server_addr: Tuple[str, int]):
+    #: Number of seconds to wait before a connection times out
+    _DEFAULT_TIMEOUT = 3
+
+    def __init__(self, server_addr: Tuple[str, int], timeout: int = _DEFAULT_TIMEOUT):
         """
         :param server_addr: The address of the server to communicate with
         :type server_addr: Tuple[str, int]
+        :param timeout: Number of seconds to wait for a response before timing out
+        :type timeout: int
         """
         self._server_addr = server_addr
         self._socket = None
         self._wfile = None
         self._rfile = None
         self._retry_count = 0
+        self._timeout = timeout
         self._connect()
 
     def _connect(self):
@@ -31,6 +39,7 @@ class TcpClient:
         Creates a new connection with server_addr
         """
         self._socket = socket(AF_INET, SOCK_STREAM)
+        self._socket.settimeout(self._timeout)
         self._socket.connect(self._server_addr)
         self._rfile = self._socket.makefile("rb")
         self._wfile = self._socket.makefile("wb")
@@ -42,15 +51,20 @@ class TcpClient:
         try:
             if self._rfile is not None:
                 self._rfile.close()
+                self._rfile = None
 
             if self._wfile is not None:
                 self._wfile.close()
+                self._wfile = None
 
             if self._socket is not None:
                 self._socket.shutdown(SHUT_RDWR)
                 self._socket.close()
+                self._socket = None
+
         except OSError as e:
-            raise ConnectionError("Client disconnected: '{}'".format(e))
+            if e.errno != ENOTCONN:
+                raise ConnectionError("Could not connect: '{}'".format(e))
 
     def stop(self):
         """
@@ -69,7 +83,6 @@ class TcpClient:
             data = data.encode("utf-8")
         request = TcpMessage(data)
         request.to_stream(self._wfile)
-        self._wfile.flush()
 
     def receive(self) -> bytes:
         """
@@ -82,13 +95,16 @@ class TcpClient:
         """
         response = TcpMessage.from_stream(self._rfile)
 
-        if response is None:
-            self._retry_count += 1
-            if self._retry_count < TcpClient.RETRIES:
-                self._disconnect()
-                self._connect()
-                return self.receive()
-            raise ConnectionError("No response from server")
+        while response is None and self._retry_count < TcpClient.RETRIES:
+            self._disconnect()
+            self._connect()
 
-        self._rfile.flush()
+            response = TcpMessage.from_stream(self._rfile)
+            self._retry_count += 1
+
+        self._retry_count = TcpClient.RETRIES
+
+        if response is None:
+            return bytes()
+
         return response.get_content()

@@ -2,6 +2,7 @@ import time
 
 from pytcp_message import TcpServer, TcpClient
 from datetime import datetime
+from threading import Thread
 
 ADDR = "127.0.0.1"
 PORT = 8080
@@ -16,12 +17,14 @@ def log_request(req, _):
             req.get_content().decode("utf-8")
         )
     )
+    return True
 
 
 def send_response(req, res):
     res.set_content("You are {}:{}".format(
         *req.get_client_address()
     ).encode("utf-8"))
+    return True
 
 
 def log_response(req, res):
@@ -31,6 +34,7 @@ def log_response(req, res):
         res.get_content().decode("utf-8"),
         req.get_client_address()[0]
     ))
+    return True
 
 
 def main():
@@ -53,16 +57,30 @@ def main():
         print("Client Received: '{}'\n".format(response.decode("utf-8")))
 
     tcpd.stop()
-    time.sleep(5)
-    print("Server stopped.\n")
+    time.sleep(2)
+    print("Server went away.\n")
+    time.sleep(3)
 
-    print("Client sending '{}'...".format(send_message.format("END")))
-    tcpc.send(send_message.format("END").encode("utf-8"))
-    response = tcpc.receive()
-    print("Client Received: '{}'\n".format(response.decode("utf-8")))
+    def timeout_send():
+        print("Client sending '{}'...".format(send_message.format("END")))
+        tcpc.send(send_message.format("END").encode("utf-8"))
+        response = tcpc.receive()
+        print("Client Received: '{}'\n".format(response.decode("utf-8")))
+
+    t = Thread(target=timeout_send)
+    t.start()
+
+    time.sleep(2)
+    tcpd.start()
+    print("Server came back.")
+
+    t.join()
 
     tcpc.stop()
     print("Client closed connection.")
+
+    tcpd.stop()
+    print("Server stopped.")
 
 
 if __name__ == "__main__":
