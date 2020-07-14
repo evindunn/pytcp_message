@@ -61,6 +61,10 @@ class TcpMessage:
         :param stream: The stream to write to
         :type stream: io.FileIO
         """
+
+        if stream.closed:
+            raise ConnectionError("Stream is closed")
+
         content = self._content
         content_len = len(content)
         is_compressed = 0
@@ -84,7 +88,7 @@ class TcpMessage:
         bytes_written = stream.write(message)
 
         if bytes_written != len(message):
-            raise ConnectionError("Unable to write message")
+            raise ConnectionError("Bytes written do not equal length of message")
 
         stream.flush()
 

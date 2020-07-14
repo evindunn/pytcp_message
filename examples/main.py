@@ -67,7 +67,7 @@ def main():
         response = tcpc.receive()
         print("Client Received: '{}'\n".format(response.decode("utf-8")))
 
-    t = Thread(target=timeout_send)
+    t = Thread(target=timeout_send, daemon=False)
     t.start()
 
     time.sleep(2)

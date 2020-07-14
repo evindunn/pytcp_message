@@ -49,18 +49,14 @@ class TcpClient:
         Disconnects from server_addr
         """
         try:
-            if self._rfile is not None:
+            if not self._rfile.closed:
                 self._rfile.close()
-                self._rfile = None
 
-            if self._wfile is not None:
+            if not self._wfile.closed:
                 self._wfile.close()
-                self._wfile = None
 
-            if self._socket is not None:
-                self._socket.shutdown(SHUT_RDWR)
-                self._socket.close()
-                self._socket = None
+            self._socket.shutdown(SHUT_RDWR)
+            self._socket.close()
 
         except OSError as e:
             if e.errno != ENOTCONN:
