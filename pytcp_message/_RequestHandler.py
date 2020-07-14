@@ -25,15 +25,20 @@ class _RequestHandler(StreamRequestHandler):
 
         while is_connected and self.server.is_running():
 
-            request = TcpRequest.from_stream(self.client_address, self.rfile)
-
-            if request is None:
+            if self.rfile.closed:
                 is_connected = False
             else:
-                response = TcpMessage()
+                request = TcpRequest.from_stream(self.client_address, self.rfile)
 
-                request_listeners = self.server.get_request_handlers()
-                for listener in request_listeners:
-                    listener(request, response)
+                if request is None:
+                    is_connected = False
+                else:
+                    response = TcpMessage()
 
-                response.to_stream(self.wfile)
+                    request_listeners = self.server.get_request_handlers()
+                    for listener in request_listeners:
+                        if not listener(request, response):
+                            break
+
+                    if not self.wfile.closed:
+                        response.to_stream(self.wfile)

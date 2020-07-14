@@ -22,7 +22,8 @@ class TcpMessage:
     #: compressed
     _HEADER_BYTES_COMPRESSION = 1
 
-    #: Number of bytes used over the wire to indicate the message size (64-bit int)
+    #: Number of bytes used over the wire to indicate the message size
+    #: (64-bit int)
     _HEADER_BYTES_SIZE = 8
 
     def __init__(self, content: bytes = None):
@@ -60,7 +61,11 @@ class TcpMessage:
         :param stream: The stream to write to
         :type stream: io.FileIO
         """
-        content = self._content[:]
+
+        if stream.closed:
+            raise ConnectionError("Stream is closed")
+
+        content = self._content
         content_len = len(content)
         is_compressed = 0
 
@@ -79,7 +84,12 @@ class TcpMessage:
             byteorder=TcpMessage._BYTE_ORDER
         )
 
-        stream.write(is_compressed + content_len + content)
+        message = is_compressed + content_len + content
+        bytes_written = stream.write(message)
+
+        if bytes_written != len(message):
+            raise ConnectionError("Bytes written do not equal length of message")
+
         stream.flush()
 
     @staticmethod
@@ -89,7 +99,7 @@ class TcpMessage:
         stream times out, returns None
 
         :param stream: The stream to read from
-        :type stream: io.FileIO
+        :type stream: io.BinaryIO
         :return: The message read from the stream, or None if unable to read
         :rtype: TcpMessage
         """
